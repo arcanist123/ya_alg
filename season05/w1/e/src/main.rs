@@ -26,12 +26,12 @@ fn main() {
     }
 
     let number_to_be_divided = line_components[0];
-    let divisor: i32 = line_components[1].parse().unwrap();
+    let divisor: u128 = line_components[1].parse().unwrap();
     let number_of_days: usize = line_components[2].parse().unwrap();
     let mut is_number_found = false;
     for i in 0..=9 {
         let number_to_be_divided_next = format!("{}{}", number_to_be_divided, i);
-        let divident: i32 = number_to_be_divided_next.parse().unwrap();
+        let divident: u128 = number_to_be_divided_next.parse().unwrap();
         if (divident % divisor) == 0 {
             println!(
                 "{}{}",

@@ -24,7 +24,7 @@ fn main() {
     let building_health = input[1];
     let enemy_soldjers_per_round = input[2];
 
-    get_number_of_rounds(
+    let number_of_rounds = get_number_of_rounds(
         &State {
             my_soldjers: 0,
             building_health: 0,
@@ -39,13 +39,47 @@ fn main() {
         },
         0,
     );
+    if number_of_rounds == i32::MAX {
+        println!("-1");
+    } else {
+        println!("{}", number_of_rounds);
+    }
 }
 
+enum Actions {
+    AttackSoldjers,
+    AttackBuilding,
+}
+
+#[derive(PartialEq)]
 struct State {
     my_soldjers: i32,
     building_health: i32,
     enemy_soldjers: i32,
     enemy_soldjers_per_round: i32,
+}
+
+impl State {
+    fn apply_action(&self, action: &Actions) -> State {
+        match action {
+            Actions::AttackBuilding => {
+                let my_unused_soldjers = self.my_soldjers - self.building_health;
+
+                State {
+                    my_soldjers: self.my_soldjers,
+                    building_health: self.building_health - self.my_soldjers,
+                    enemy_soldjers: self.enemy_soldjers,
+                    enemy_soldjers_per_round: self.enemy_soldjers_per_round,
+                }
+            }
+            Actions::AttackSoldjers => State {
+                my_soldjers: self.my_soldjers,
+                building_health: self.building_health,
+                enemy_soldjers: self.enemy_soldjers,
+                enemy_soldjers_per_round: self.enemy_soldjers_per_round,
+            },
+        }
+    }
 }
 
 fn get_number_of_rounds(old_state: &State, state: &State, current_round: i32) -> i32 {
@@ -79,7 +113,7 @@ fn get_after_building_attack(old_state: &State, state: &State, current_round: i3
     //exit condition
     if building_health == 0 && enemy_soldjers == 0 {
         current_round + 1
-    } else if my_surviving_soldjers <= 0 {
+    } else if my_surviving_soldjers <= 0 || old_state == state {
         i32::MAX
     } else {
         get_number_of_rounds(
@@ -109,15 +143,30 @@ fn get_after_soldjer_attack(old_state: &State, state: &State, current_round: i32
     }
 
     //now attack the building
-    let mut remaining_building_health = state.building_health - my_remaining_soldjers;
+    let building_health = state.building_health - my_remaining_soldjers;
 
     //enemy move
     // enemy attacks
-    let my_surviving_soldjers = state.my_soldjers - state.enemy_soldjers;
+    let my_surviving_soldjers = state.my_soldjers - remaining_enemy_soldjers;
     //building produces enemy soldjers
-    if remaining_building_health > 0 {
+    if building_health > 0 {
         remaining_enemy_soldjers += state.enemy_soldjers_per_round;
     }
 
-    0
+    if remaining_enemy_soldjers == 0 && building_health == 0 {
+        current_round + 1
+    } else if my_surviving_soldjers <= 0 || state == old_state {
+        i32::MAX
+    } else {
+        get_number_of_rounds(
+            state,
+            &State {
+                building_health,
+                enemy_soldjers: remaining_enemy_soldjers,
+                enemy_soldjers_per_round: state.enemy_soldjers_per_round,
+                my_soldjers: my_surviving_soldjers,
+            },
+            current_round + 1,
+        )
+    }
 }

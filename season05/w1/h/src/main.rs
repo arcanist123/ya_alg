@@ -15,12 +15,25 @@ struct RunState {
 
 impl RunState {
     fn transition_state(&self) -> Self {
+        let time = match self.speed2 {
+            x if x < 0f64 => f64::min(
+                (1f64 - self.position1) / self.speed1,
+                self.position2 / self.speed2,
+            ),
+            x if x == 0f64 => (1f64 - self.position1) / self.speed1,
+            x if x > 0f64 => f64::min(
+                (1f64 - self.position1) / self.speed1,
+                (1f64 - self.position2) / self.speed2,
+            ),
+            _ => 2f64,
+        };
+
         Self {
             speed1: self.speed1,
-            position1: 0f64,
+            position1: self.position1 + (self.speed1 * time),
             speed2: self.speed2,
-            position2: 0f64,
-            time: 0f64,
+            position2: self.position2 + (self.speed2 * time),
+            time: self.time + time,
         }
     }
     fn new(speed1: f64, position1: f64, speed2: f64, position2: f64, time: f64) -> Self {
@@ -61,7 +74,7 @@ impl RunState {
     }
     fn get_time(&self) -> f64 {
         if self.speed1 < 0f64 {
-            self.inverse_state().get_time();
+            self.inverse_state().get_time()
         } else {
             let next_state = self.transition_state();
             if RunState::is_intervals_intersect(
@@ -71,12 +84,18 @@ impl RunState {
                 RunState::get_number_at_precision(next_state.position2),
             ) {
                 if self.speed2 > 0f64 {
+                    (self.position2 - self.position1) / (self.speed1 - self.speed2)
                 } else {
+                    let mut delta_position = self.position1 - self.position2;
+                    if delta_position < 0f64 {
+                        delta_position = 0f64 - delta_position;
+                    }
+                    delta_position / (self.speed1 + self.speed2)
                 }
+            } else {
+                next_state.get_time()
             }
         }
-
-        0f64
     }
     fn get_number_at_precision(value: f64) -> i32 {
         (value * 10000000000f64) as i32

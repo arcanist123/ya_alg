@@ -157,6 +157,11 @@ impl RunState {
         (value * 10000000000f64) as i64
     }
     fn is_intervals_intersect(start_1: i64, end_1: i64, start_2: i64, end_2: i64) -> bool {
-        core::cmp::max(start_1, start_2) >= core::cmp::min(end_1, end_2)
+        if start_1 <= start_2 {
+            start_2 <= end_1
+        } else {
+            start_1 <= end_2
+        }
+        // core::cmp::max(start_1, start_2) >= core::cmp::min(end_1, end_2)
     }
 }

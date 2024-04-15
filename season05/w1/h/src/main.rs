@@ -45,6 +45,8 @@ fn main() {
         } else {
             time = -1f64;
         }
+    } else if speed1 == 0 {
+        time = RunState::create_from_i32(speed2, position2, speed1, position1, length).get_time();
     } else {
         time = RunState::create_from_i32(speed1, position1, speed2, position2, length).get_time();
     }
@@ -56,15 +58,10 @@ fn main() {
 
 #[derive(Debug)]
 struct RunState {
-    point1: PointAtTime,
-    point2: PointAtTime,
-    time: f64,
-}
-
-#[derive(Debug)]
-struct PointAtTime {
-    speed: f64,
-    position: f64,
+    speed1: f64,
+    position1: f64,
+    speed2: f64,
+    position2: f64,
     time: f64,
 }
 
@@ -91,7 +88,6 @@ impl RunState {
             time: self.time + time,
         }
     }
-    fn transition_point(position: f64, speed: f64) -> (f64, f64, f64) {}
     fn get_relative_position_speed(length: i32, position: i32, speed: i32) -> (f64, f64) {
         let relative_position = position as f64 / (length as f64 / 2f64);
         let relative_speed = speed as f64 / (length as f64 / 2f64);
@@ -113,12 +109,26 @@ impl RunState {
         RunState::new(v1, x1, v2, x2, 0f64)
     }
     fn new(speed1: f64, position1: f64, speed2: f64, position2: f64, time: f64) -> Self {
-        Self {
+        let state = Self {
             speed1,
             position1,
             speed2,
             position2,
             time,
+        };
+        if state.speed1 < 0f64 {
+            state.inverse_state()
+        } else {
+            state
+        }
+    }
+    fn inverse_state(&self) -> Self {
+        Self {
+            speed1: 0f64 - self.speed1,
+            position1: 1f64 - self.position1,
+            speed2: 0f64 - self.speed2,
+            position2: 1f64 - self.position2,
+            time: self.time,
         }
     }
     fn get_time(&self) -> f64 {
@@ -147,6 +157,11 @@ impl RunState {
         (value * 10000000000f64) as i64
     }
     fn is_intervals_intersect(start_1: i64, end_1: i64, start_2: i64, end_2: i64) -> bool {
-        (start_1 <= end_2) && (start_2 <= end_1)
+        if start_1 <= start_2 {
+            start_2 <= end_1
+        } else {
+            start_1 <= end_2
+        }
+        // (start_1 <= end_2) && (start_2 <= end_1)
     }
 }

@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+use std::fs;
 use std::fs::File;
 use std::io::BufRead;
+// use std::time::SystemTime;
 
 fn main() {
     // Define the file path
@@ -23,29 +26,7 @@ fn main() {
     let my_soldjers = input[0];
     let building_health = input[1];
     let enemy_soldjers_per_round = input[2];
-
-    // for a in 4..10 {
-    //     println!("{}", a);
-    //     for b in 4990..4995 {
-    //         // if a == 3 {
-    //         //     println!("{}", b);
-    //         // }
-    //         for c in 1..5000 {
-    //             let solution = get_number_of_rounds(
-    //                 &State {
-    //                     my_soldjers: a,
-    //                     building_health: b,
-    //                     enemy_soldjers: 0,
-    //                     enemy_soldjers_per_round: c,
-    //                 },
-    //                 1,
-    //             );
-
-    //             println!("the solution for {} {} {} is {}", a, b, c, solution);
-    //         }
-    //     }
-    // }
-
+    let mut states: HashMap<State, i32> = HashMap::new();
     let number_of_rounds = get_number_of_rounds(
         &State {
             my_soldjers,
@@ -54,11 +35,56 @@ fn main() {
             enemy_soldjers_per_round,
         },
         1,
+        &mut states,
     );
     if number_of_rounds == i32::MAX {
         println!("-1");
     } else {
         println!("{}", number_of_rounds);
+    }
+    solve_test_case();
+}
+
+fn solve_test_case() {
+    let mut my_vector: Vec<String> = Vec::new();
+    for my_soldjers in 1..100 {
+        for building_health in 1..100 {
+            for enemy_soldjers_per_round in 1..100 {
+                let mut states: HashMap<State, i32> = HashMap::new();
+                let rounds = get_number_of_rounds(
+                    &State {
+                        my_soldjers,
+                        building_health,
+                        enemy_soldjers: 0,
+                        enemy_soldjers_per_round,
+                    },
+                    1,
+                    &mut states,
+                );
+                states.clear();
+                // println!(
+                //     "{} {} {} {}",
+                //     my_soldjers, building_health, enemy_soldjers_per_round, rounds
+                // );
+                if my_soldjers >= building_health
+                    || my_soldjers > enemy_soldjers_per_round
+                    || rounds > 1000
+                {
+                } else {
+                    my_vector.push(format!(
+                        "{} {} {} {}",
+                        my_soldjers, building_health, enemy_soldjers_per_round, rounds
+                    ));
+                }
+            }
+        }
+    }
+    let data = my_vector.join("\n");
+    let path = "my_file.txt";
+
+    match fs::write(path, data) {
+        Ok(_) => println!("Successfully wrote data to file"),
+        Err(error) => println!("Error writing to file: {}", error),
     }
 }
 
@@ -67,7 +93,7 @@ enum Actions {
     AttackBuilding,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, Clone)]
 struct State {
     my_soldjers: i32,
     building_health: i32,
@@ -115,32 +141,52 @@ impl State {
     }
 }
 
-fn get_number_of_rounds(state: &State, current_round: i32) -> i32 {
-    i32::min(
-        get_after_building_attack(state, current_round),
-        get_after_soldjer_attack(state, current_round),
-    )
+fn get_number_of_rounds(
+    state: &State,
+    current_round: i32,
+    states: &mut HashMap<State, i32>,
+) -> i32 {
+    if states.contains_key(state) {
+        *states.get(state).unwrap()
+    } else {
+        let current_solution = i32::min(
+            get_after_building_attack(state, current_round, states),
+            get_after_soldjer_attack(state, current_round, states),
+        );
+
+        states.insert(state.clone(), current_solution);
+        current_solution
+    }
 }
 
-fn get_after_building_attack(state: &State, current_round: i32) -> i32 {
-    println!("{:?}", state);
+fn get_after_building_attack(
+    state: &State,
+    current_round: i32,
+    states: &mut HashMap<State, i32>,
+) -> i32 {
+    // println!("{:?}", state);
     let next_state = state.apply_action(&Actions::AttackBuilding);
     if &next_state == state || next_state.my_soldjers == 0 || current_round > 10000 {
         i32::MAX
     } else if next_state.enemy_soldjers == 0 && next_state.building_health == 0 {
         current_round
     } else {
-        get_number_of_rounds(&next_state, current_round + 1)
+        get_number_of_rounds(&next_state, current_round + 1, states)
     }
 }
 
-fn get_after_soldjer_attack(state: &State, current_round: i32) -> i32 {
+fn get_after_soldjer_attack(
+    state: &State,
+    current_round: i32,
+    states: &mut HashMap<State, i32>,
+) -> i32 {
+    // println!("{:?}", state);
     let next_state = state.apply_action(&Actions::AttackSoldjers);
     if &next_state == state || next_state.my_soldjers == 0 || current_round > 10000 {
         i32::MAX
     } else if next_state.enemy_soldjers == 0 && next_state.building_health == 0 {
         current_round
     } else {
-        get_number_of_rounds(&next_state, current_round + 1)
+        get_number_of_rounds(&next_state, current_round + 1, states)
     }
 }

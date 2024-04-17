@@ -45,8 +45,6 @@ fn main() {
         } else {
             time = f64::MAX;
         }
-    } else if speed1 == 0 {
-        time = RunState::create_from_i32(speed2, position2, speed1, position1, length).get_time();
     } else {
         time = RunState::create_from_i32(speed1, position1, speed2, position2, length).get_time();
     }
@@ -59,7 +57,6 @@ fn main() {
         println!("{}", time_as_string)
     }
 }
-
 #[derive(Debug)]
 struct RunState {
     speed1: f64,
@@ -82,11 +79,12 @@ impl RunState {
             time: self.time + time,
         }
     }
+
     fn get_relative_position_speed(length: i32, position: i32, speed: i32) -> (f64, f64) {
         let relative_position = position as f64 / (length as f64 / 2f64);
         let relative_speed = speed as f64 / (length as f64 / 2f64);
         if relative_position > 1f64 {
-            (1f64 - relative_position, relative_speed * -1f64)
+            (1f64 - (relative_position - 1f64), 0f64 - relative_speed)
         } else {
             (relative_position, relative_speed)
         }
@@ -103,17 +101,21 @@ impl RunState {
         RunState::new(v1, x1, v2, x2, 0f64)
     }
     fn new(speed1: f64, position1: f64, speed2: f64, position2: f64, time: f64) -> Self {
-        let state = Self {
+        Self {
             speed1,
             position1,
             speed2,
             position2,
             time,
-        };
-        if state.speed1 < 0f64 {
-            state.inverse_state()
-        } else {
-            state
+        }
+    }
+    fn reflect_state(&self) -> Self {
+        Self {
+            speed1: 0f64 - self.speed1,
+            position1: 1f64 - self.position1,
+            speed2: 0f64 - self.speed2,
+            position2: 1f64 - self.position2,
+            time: self.time,
         }
     }
     fn inverse_state(&self) -> Self {
@@ -134,38 +136,28 @@ impl RunState {
         }
     }
     fn get_time(&self) -> f64 {
+        println!("current state is {:?}", self);
         let next_state = self.transition_state();
-        let interval_intersect = RunState::is_intervals_intersect(
-            RunState::get_number_at_precision(self.position1),
-            RunState::get_number_at_precision(next_state.position1),
-            RunState::get_number_at_precision(self.position2),
-            RunState::get_number_at_precision(next_state.position2),
+        println!("next state is {:?}", next_state);
+
+        let estimated_time = self.calculate_time();
+        println!(
+            "estimated time is {}, state delta is {}",
+            estimated_time,
+            (next_state.time - self.time)
         );
-        if interval_intersect {
-            if self.speed2 > 0f64 {
-                (self.position2 - self.position1) / (self.speed1 - self.speed2)
-            } else {
-                let mut delta_position = self.position1 - self.position2;
-                if delta_position < 0f64 {
-                    delta_position = 0f64 - delta_position;
-                }
-                delta_position / (self.speed1 + self.speed2)
-            }
-        } else {
+        if estimated_time == f64::MAX
+            || estimated_time < 0f64
+            || estimated_time > (next_state.time - self.time)
+        {
             next_state.inverse_state().get_time()
+        } else {
+            self.time + estimated_time
         }
     }
     fn get_number_at_precision(value: f64) -> i64 {
         (value * 10000000000f64) as i64
     }
-    fn is_intervals_intersect(start_1: i64, end_1: i64, start_2: i64, end_2: i64) -> bool {
-        if start_1 <= start_2 {
-            start_2 <= end_1
-        } else {
-            start_1 <= end_2
-        }
-    }
-
     fn is_at_border(position: f64) -> bool {
         RunState::get_number_at_precision(position) == 0
             || RunState::get_number_at_precision(position) == 10000000000
@@ -177,6 +169,30 @@ impl RunState {
             x if x == 0f64 => f64::MAX,
             x if x > 0f64 => (1f64 - position) / speed,
             _ => f64::MAX,
+        }
+    }
+
+    fn calculate_time(&self) -> f64 {
+        if RunState::get_number_at_precision(self.position1)
+            == RunState::get_number_at_precision(self.position2)
+        {
+            self.time + 0f64
+        } else if self.position1 > self.position2 {
+            match (self.speed1, self.speed2) {
+                (x, y) if x >= 0f64 && y >= 0f64 => {
+                    (self.position1 - self.position2) / (self.speed1 - self.speed2)
+                }
+                (x, y) if x >= 0f64 && y < 0f64 => f64::MAX,
+                (x, y) if x < 0f64 && y >= 0f64 => {
+                    (self.position1 - self.position2) / (self.speed1.abs() + self.speed2)
+                }
+                (x, y) if x < 0f64 && y < 0f64 => {
+                    (self.position1 - self.position2) / (self.speed1 - self.speed2)
+                }
+                _ => 1f64,
+            }
+        } else {
+            self.reflect_state().calculate_time()
         }
     }
 }

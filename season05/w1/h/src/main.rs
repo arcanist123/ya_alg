@@ -53,8 +53,8 @@ fn main() {
         println!("NO");
     } else {
         println!("YES");
-        let time_as_string = time.to_string().chars().take(12).collect::<String>();
-        println!("{}", time_as_string)
+        let formatted_string = format!("{:.10}", time);
+        println!("{}", formatted_string)
     }
 }
 #[derive(Debug)]
@@ -109,15 +109,7 @@ impl RunState {
             time,
         }
     }
-    fn reflect_state(&self) -> Self {
-        Self {
-            speed1: 0f64 - self.speed1,
-            position1: 1f64 - self.position1,
-            speed2: 0f64 - self.speed2,
-            position2: 1f64 - self.position2,
-            time: self.time,
-        }
-    }
+
     fn inverse_state(&self) -> Self {
         Self {
             speed1: if RunState::is_at_border(self.position1) {
@@ -136,16 +128,16 @@ impl RunState {
         }
     }
     fn get_time(&self) -> f64 {
-        println!("current state is {:?}", self);
+        // println!("current state is {:?}", self);
         let next_state = self.transition_state();
-        println!("next state is {:?}", next_state);
+        // println!("next state is {:?}", next_state);
 
         let estimated_time = self.calculate_time();
-        println!(
-            "estimated time is {}, state delta is {}",
-            estimated_time,
-            (next_state.time - self.time)
-        );
+        // println!(
+        //     "estimated time is {}, state delta is {}",
+        //     estimated_time,
+        //     (next_state.time - self.time)
+        // );
         if estimated_time == f64::MAX
             || estimated_time < 0f64
             || estimated_time > (next_state.time - self.time)
@@ -177,22 +169,15 @@ impl RunState {
             == RunState::get_number_at_precision(self.position2)
         {
             self.time + 0f64
-        } else if self.position1 > self.position2 {
-            match (self.speed1, self.speed2) {
-                (x, y) if x >= 0f64 && y >= 0f64 => {
-                    (self.position1 - self.position2) / (self.speed1 - self.speed2)
-                }
-                (x, y) if x >= 0f64 && y < 0f64 => f64::MAX,
-                (x, y) if x < 0f64 && y >= 0f64 => {
-                    (self.position1 - self.position2) / (self.speed1.abs() + self.speed2)
-                }
-                (x, y) if x < 0f64 && y < 0f64 => {
-                    (self.position1 - self.position2) / (self.speed1 - self.speed2)
-                }
-                _ => 1f64,
-            }
         } else {
-            self.reflect_state().calculate_time()
+            //  speed1*time + position1 = speed2*time + position2
+            //  (speed1 - speed2)*time = position2 - position1
+            let time = (self.position2 - self.position1) / (self.speed1 - self.speed2);
+            if time < 0f64 {
+                f64::MAX
+            } else {
+                time
+            }
         }
     }
 }
